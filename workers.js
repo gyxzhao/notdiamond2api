@@ -275,6 +275,10 @@
     // src/index.js
     const http = require('http');
     const url = require('url');
+    const fetch = require('node-fetch');
+    const { ReadableStream, WritableStream, TransformStream } = require('stream/web');
+    global.Request = fetch.Request;
+    global.Response = fetch.Response;
 
     const server = http.createServer(async (req, res) => {
         const parsedUrl = url.parse(req.url, true);
@@ -303,7 +307,14 @@
                 const response = await completions(request);
                 res.writeHead(response.status, response.headers);
                 if (response.body) {
-                    response.body.pipe(res);
+                    response.body.pipeTo(new WritableStream({
+                        write(chunk) {
+                            res.write(chunk);
+                        },
+                        close() {
+                            res.end();
+                        }
+                    }));
                 } else {
                     res.end(await response.text());
                 }
