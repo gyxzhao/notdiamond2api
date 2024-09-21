@@ -1,17 +1,17 @@
 # 使用官方 Node.js 运行时作为父镜像
 FROM node:16-slim
 
+# 安装 git
+RUN apt-get update && apt-get install -y git
+
 # 设置工作目录
 WORKDIR /app
 
-# 复制 package.json 和 package-lock.json (如果存在)
-COPY package*.json ./
+# 从 GitHub 克隆仓库
+RUN git clone https://github.com/gyxzhao/notdiamond2api.git .
 
-# 安装项目依赖
-RUN npm install
-
-# 复制项目文件到工作目录
-COPY . .
+# 如果有 package.json，安装依赖
+RUN if [ -f package.json ]; then npm install; fi
 
 # 设置环境变量
 ENV AUTH_EMAIL=${AUTH_EMAIL}
