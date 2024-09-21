@@ -273,21 +273,64 @@
     }
 
     // src/index.js
-    addEventListener("fetch", (event) => {
+    const http = require('http');
+    const url = require('url');
+
+    const server = http.createServer(async (req, res) => {
+        const parsedUrl = url.parse(req.url, true);
+        
         if (AUTH_ENABLED) {
-            const authHeader = event.request.headers.get("Authorization");
+            const authHeader = req.headers['authorization'];
             const isValid = authHeader === `Bearer ${AUTH_VALUE}` || authHeader === AUTH_VALUE;
             if (!isValid) {
-                return event.respondWith(new Response("Unauthorized", { status: 401 }));
+                res.writeHead(401, { 'Content-Type': 'text/plain' });
+                res.end('Unauthorized');
+                return;
             }
         }
-        const url = new URL(event.request.url);
-        if (url.pathname === "/hf/v1/chat/completions") {
-            event.respondWith(completions(event.request));
+
+        if (parsedUrl.pathname === "/hf/v1/chat/completions") {
+            let body = '';
+            req.on('data', chunk => {
+                body += chunk.toString();
+            });
+            req.on('end', async () => {
+                const request = new Request(req.url, {
+                    method: req.method,
+                    headers: req.headers,
+                    body: body
+                });
+                const response = await completions(request);
+                res.writeHead(response.status, response.headers);
+                if (response.body) {
+                    response.body.pipe(res);
+                } else {
+                    res.end(await response.text());
+                }
+            });
         } else {
-            event.respondWith(new Response("Not Found", { status: 404 }));
+            res.writeHead(404, { 'Content-Type': 'text/plain' });
+            res.end('Not Found');
         }
     });
+
+    const PORT = process.env.PORT || 7860;
+    server.listen(PORT, () => {
+        console.log(`Server running on port ${PORT}`);
+    });
+
+    // 初始化
+    (async () => {
+        if (await init()) {
+            console.log("初始化成功");
+            console.log("Refresh Token: ", REFRESH_TOKEN);
+            console.log("Next Action: ", NEXT_ACTION);
+            console.log("User ID: ", USER_ID);
+        } else {
+            console.log("初始化失败");
+        }
+    })();
+
     async function init() {
         if (await fetchNextAction()) {
             return true;
