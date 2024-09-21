@@ -282,7 +282,7 @@
             }
         }
         const url = new URL(event.request.url);
-        if (url.pathname === "/v1/chat/completions") {
+        if (url.pathname === "/hf/v1/chat/completions") {
             event.respondWith(completions(event.request));
         } else {
             event.respondWith(new Response("Not Found", { status: 404 }));
